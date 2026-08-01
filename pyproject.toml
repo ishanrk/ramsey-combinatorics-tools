@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ramsey-combinatorics-tools"
+version = "0.1.0"
+description = "Exact tools for finite polynomial van der Waerden difference-coloring problems"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Ishan Kumthekar" }]
+dependencies = [
+  "python-sat>=1.8.dev13",
+]
+
+[project.optional-dependencies]
+dev = [
+  "hypothesis>=6.0",
+  "pytest>=8.0",
+]
+
+[project.scripts]
+pvdw = "pvdw.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+addopts = "-ra"
+testpaths = ["tests"]
