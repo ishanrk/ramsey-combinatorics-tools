@@ -150,6 +150,47 @@ at most 36 colors also have a compact `0-9A-Z` representation.
 Historical exploratory scripts are preserved under [`legacy/`](legacy/) and are
 not imported by the package.
 
+## Compact proof-search tools
+
+The `proof_tools` package searches for short, independently checkable
+mathematical obstructions inside polynomial-distance graphs. It remains focused
+on finite polynomial van der Waerden coloring rather than providing a generic
+Ramsey framework.
+
+```console
+pvdw gadget --target moser \
+  --differences 1,2,5,7,12,15 --ambient-max 16
+
+pvdw block-cover --example x2-plus-x-spindle
+pvdw parity-cover --example square-submillion
+pvdw drift --example cubes-3color-522
+
+pvdw transfer --poly "x^2+x" \
+  --source-differences 1,2,5,7,12,15 \
+  --max-scale 100 --input-bound 100
+```
+
+The gadget command uses neighborhood-intersection backtracking and pivoted
+Bron--Kerbosch clique search. Coloring discovery uses DSATUR and color-permutation
+normalization, while exact small independence searches use bitset
+branch-and-bound. The Moser-spindle fixture independently establishes
+`alpha=2`, so its seven vertices have four-color signature `(2,2,2,1)`.
+
+Block covers are solved through OR-Tools CP-SAT and then expanded point by point.
+The bundled 17-block fixture covers `0,...,16` seven times and yields the modular
+singleton-count contradiction `n_j in {6,13}`, hence `sum n_j >= 24 > 17`.
+
+GF(2) polynomials use packed Python integers, exact shifts, and XOR. The
+square-submillion example verifies `UA + VB + qC = 0`, odd total block parity,
+and even expanded incidence through point `971584` without printing dense
+coefficient arrays. The cube drift example derives four assignments from the
+listed partition relations and extracts a Bellman--Ford negative cycle for each.
+
+Every proof command writes verified JSON and readable text. Use
+`--output-prefix PATH` to select the destination and `--latex` for optional
+LaTeX. See [`examples/`](examples/) for reproduction commands and target
+edge-list JSON.
+
 ## Benchmarks and optional integrations
 
 ```console
