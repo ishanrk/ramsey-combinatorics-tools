@@ -6,10 +6,11 @@ polynomial `p` with `p(0) = 0`, `c >= 2`, and `N >= 1`, it studies colorings of
 `0, ..., N - 1` in which endpoints at a distance `|p(d)|` always receive
 different colors.
 
-Phase 1 deliberately contains no generic Ramsey framework, periodic or twisted
-models, repair heuristics, Potts/annealing searches, UBCSAT integration, or
-external solver execution. Its only search backend is a deterministic DSATUR
-backtracker guarded by a small-instance size limit.
+The package remains deliberately specific to polynomial-distance coloring. It
+provides unrestricted SAT and Potts search, monotone incremental scans,
+finite-interval periodic and twisted-periodic quotients, and structured-backbone
+repair. Restricted failures are always reported separately from unrestricted
+noncolorability, and stochastic searches never report UNSAT.
 
 ## Install
 
@@ -39,8 +40,40 @@ pvdw encode --poly "x^2" --colors 4 --N 58 \
 pvdw encode --poly "x^2+x" --colors 4 --N 97 \
   --encoding binary --output instance-binary.cnf
 pvdw solve --poly "x^2" --colors 3 --N 28 \
-  --backend bruteforce --output square-28.json
+  --mode direct --backend cadical195 --output square-28.json
 pvdw verify square-28.json
+```
+
+Discover the exact PySAT and optional executable backends present on the host:
+
+```console
+pvdw backends
+```
+
+Further search modes are available without changing the polynomial convention:
+
+```console
+pvdw solve --poly "x^2" --colors 4 --N 57 \
+  --mode direct --backend potts --timeout 10
+
+pvdw scan --poly "x^2" --colors 4 --N-min 50 --N-max 60 \
+  --backend glucose4 --encoding onehot
+
+pvdw solve --poly "x^3" --colors 5 --N 9261 \
+  --mode periodic --period 63 --backend cadical195
+
+pvdw solve --poly "x^2" --colors 6 --N 400 \
+  --mode twisted --period 20 --twist 3 --backend potts
+
+pvdw periods --poly "x^2" --colors 8 --N 841 \
+  --period-min 2 --period-max 160 --backend portfolio --timeout 30
+
+pvdw twists --poly "x^2" --colors 6 --N 400 \
+  --period-min 2 --period-max 80 --twists all --backend portfolio
+
+pvdw repair --poly "x^2" --colors 8 --N 841 \
+  --backbone periodic --period 29 --backend cadical195 \
+  --editable-strategy greedy_vertex_cover --max-expansions 3
 ```
 
 Add `--json` to any subcommand for machine-readable output. Exit codes are 0
@@ -65,6 +98,43 @@ interval is therefore complete, with all signed preimages retained.
 Edges are generated directly as `(u, u + delta)` for every certified distance
 and `u in range(N - delta)`; there is no quadratic all-pairs scan.
 
+## Backends and status semantics
+
+`cadical195`, `cadical153`, `glucose4`, `glucose3`, and `minisat22` are preferred
+in that order when present in PySAT. Other installed PySAT solver names can be
+selected directly. Fixed-formula Kissat is accepted when available, but is not
+used for incremental scans. Solvers without safe in-process interruption are
+isolated in a subprocess whenever a fixed-formula timeout is requested.
+
+External Kissat and CaDiCaL are discovered through `PATH`, `KISSAT_BIN`, and
+`CADICAL_BIN`; a generic executable can be selected as `external:/path/to/solver`.
+UBCSAT is optional and configured with `UBCSAT_BIN`. Supported algorithm names
+are `walksat`, `walksat-tabu`, `adaptnovelty+`, `g2wsat`, and `saps`; additional
+model-report flags can be passed repeatedly with `--extra-arg`.
+
+The native Potts backend maintains constraint energy incrementally, retains the
+best positive-energy coloring across restarts, and returns `unknown` or
+`timeout` when it does not reach zero. A portfolio tries stochastic searches
+before a complete CDCL solver; only the latter may supply a negative proof.
+
+An unrestricted complete UNSAT result uses `unsat_full_model`. Periodic,
+twisted, and repair UNSAT results use `no_witness_in_restricted_model`, with the
+period/twist and finite-interval scope retained in metadata and witness files.
+
+## Finite structured models
+
+Periodic and twisted quotients include only residue constraints realized by an
+actual edge in `0, ..., N-1`; they do not impose a full cyclic graph. A periodic
+self-edge is immediately impossible. A twisted self-constraint with zero shift
+is impossible, while a nonzero self-shift is tautological and skipped.
+
+Repair retains the best nonzero-energy structured or direct Potts candidate,
+selects editable vertices that hit every current bad edge, and encodes only
+those vertices. Editable–frozen edges become deduplicated color forbids;
+frozen–frozen conflicts are treated as construction errors. Failed reduced
+models can expand by graph-neighborhood layers before returning a restricted
+negative result.
+
 ## Encodings and witnesses
 
 One-hot supports pairwise, sequential-counter, ladder, and bitwise at-most-one
@@ -80,3 +150,18 @@ at most 36 colors also have a compact `0-9A-Z` representation.
 
 Historical exploratory scripts are preserved under [`legacy/`](legacy/) and are
 not imported by the package.
+
+## Benchmarks and optional integrations
+
+```console
+pvdw benchmark --suite project-regressions --timeout 30 \
+  --output-dir benchmark-results
+```
+
+The benchmark writes `results.jsonl`, `summary.csv`, and independently verified
+JSON witnesses. No witness is written for an invalid or absent model. Large
+solver regressions are marked `slow` and run only when requested:
+
+```console
+PVDW_RUN_SLOW=1 pytest -q -m slow
+```

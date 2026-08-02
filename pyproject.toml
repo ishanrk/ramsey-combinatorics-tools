@@ -29,3 +29,6 @@ where = ["src"]
 [tool.pytest.ini_options]
 addopts = "-ra"
 testpaths = ["tests"]
+markers = [
+  "slow: optional solver integration and large regression cases",
+]

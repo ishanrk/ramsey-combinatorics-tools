@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -28,6 +28,7 @@ class Witness:
     backend: str
     seed: int
     elapsed_seconds: float
+    scope_metadata: Mapping[str, object] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -38,7 +39,7 @@ class Witness:
                 "n": self.instance.n,
                 "input_domain": self.instance.input_domain,
             },
-            "scope": {"mode": self.scope.value},
+            "scope": {"mode": self.scope.value, **dict(self.scope_metadata)},
             "coloring": list(self.coloring),
             "search": {
                 "backend": self.backend,
@@ -136,7 +137,18 @@ def validate_witness_data(data: object) -> Witness:
     if not checked.valid:
         detail = checked.error or repr(checked.violation)
         raise WitnessFormatError(f"witness coloring fails independent verification: {detail}")
-    return Witness(instance, scope, coloring, backend, seed, float(elapsed))
+    scope_metadata = {
+        key: value for key, value in scope_data.items() if key != "mode"
+    }
+    return Witness(
+        instance,
+        scope,
+        coloring,
+        backend,
+        seed,
+        float(elapsed),
+        scope_metadata,
+    )
 
 
 def create_witness(
@@ -147,6 +159,7 @@ def create_witness(
     seed: int = 0,
     elapsed_seconds: float = 0.0,
     scope: ModelScope = ModelScope.FULL,
+    scope_metadata: Mapping[str, object] | None = None,
 ) -> Witness:
     """Construct a witness only after independent verification succeeds."""
 
@@ -157,6 +170,7 @@ def create_witness(
         backend=backend,
         seed=seed,
         elapsed_seconds=float(elapsed_seconds),
+        scope_metadata=dict(scope_metadata or {}),
     )
     return validate_witness_data(candidate.to_dict())
 

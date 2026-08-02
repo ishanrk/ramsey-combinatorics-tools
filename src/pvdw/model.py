@@ -98,6 +98,8 @@ class SolveResult:
     backend: str
     coloring: tuple[int, ...] | None
     metadata: Mapping[str, object]
+    best_coloring: tuple[int, ...] | None = None
+    best_energy: int | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.status, SolveStatus):
@@ -113,4 +115,30 @@ class SolveResult:
             for color in coloring:
                 _require_plain_int(color, "color")
             object.__setattr__(self, "coloring", coloring)
+        if self.best_coloring is not None:
+            best_coloring = tuple(self.best_coloring)
+            for color in best_coloring:
+                _require_plain_int(color, "best color")
+            object.__setattr__(self, "best_coloring", best_coloring)
+        if self.best_energy is not None:
+            _require_plain_int(self.best_energy, "best_energy")
+            if self.best_energy < 0:
+                raise ValueError("best_energy must be nonnegative")
         object.__setattr__(self, "metadata", MappingProxyType(dict(self.metadata)))
+
+    def __reduce__(self) -> tuple[object, tuple[object, ...]]:
+        """Keep frozen metadata while allowing process-portfolio transport."""
+
+        return (
+            SolveResult,
+            (
+                self.status,
+                self.scope,
+                self.elapsed_seconds,
+                self.backend,
+                self.coloring,
+                dict(self.metadata),
+                self.best_coloring,
+                self.best_energy,
+            ),
+        )

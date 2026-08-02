@@ -4,10 +4,60 @@ from __future__ import annotations
 
 import time
 
+from pvdw.backends.base import BackendCapabilities, EncodedProblem, SolveOptions
 from pvdw.distances import generate_distances
 from pvdw.graph import DistanceGraph
 from pvdw.model import InstanceSpec, ModelScope, SolveResult, SolveStatus
 from pvdw.verify import verify_coloring
+
+
+class BruteforceBackend:
+    """SearchBackend adapter around the tiny Phase 1 DSATUR implementation."""
+
+    name = "bruteforce"
+    capabilities = BackendCapabilities(
+        complete=True,
+        incremental=False,
+        accepts_dimacs=False,
+        supports_assumptions=False,
+        stochastic=False,
+    )
+
+    def __init__(self, size_limit: int = 30) -> None:
+        self.size_limit = size_limit
+
+    def solve(self, problem: EncodedProblem, options: SolveOptions) -> SolveResult:
+        if problem.scope is not ModelScope.FULL:
+            raise ValueError("bruteforce adapter supports direct full models only")
+        result = solve_bruteforce(problem.instance, size_limit=self.size_limit)
+        metadata = {
+            **dict(result.metadata),
+            "backend_version": "native",
+            "seed": options.seed,
+            "formula_variables": problem.variable_count,
+            "formula_clauses": problem.clause_count,
+            "formula_literals": problem.literal_count,
+            "return_code": None,
+            "command": None,
+            "stdout_tail": "",
+            "stderr_tail": "",
+            "model_parsing": "direct_assignment"
+            if result.coloring is not None
+            else "not_applicable_unsat",
+            "verification": "valid"
+            if result.coloring is not None
+            else "not_applicable_unsat",
+        }
+        return SolveResult(
+            result.status,
+            result.scope,
+            result.elapsed_seconds,
+            self.name,
+            result.coloring,
+            metadata,
+            best_coloring=result.coloring,
+            best_energy=0 if result.coloring is not None else None,
+        )
 
 
 def solve_bruteforce(
