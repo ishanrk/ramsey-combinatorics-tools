@@ -1,5 +1,4 @@
-# ramsey-combinatorics-tools
-
+# Ramsey Theory Tools
 `ramsey-combinatorics-tools` is a focused Python 3.11+ package for finite
 polynomial van der Waerden difference-coloring problems. Given an integer
 polynomial `p` with `p(0) = 0`, `c >= 2`, and `N >= 1`, it studies colorings of
