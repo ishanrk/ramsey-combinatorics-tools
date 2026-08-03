@@ -8,5 +8,13 @@ version = "0.0.0"
 description = "a shared layout for ramsey theory tools"
 requires-python = ">=3.11"
 
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+sat = ["python-sat"]
+
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
